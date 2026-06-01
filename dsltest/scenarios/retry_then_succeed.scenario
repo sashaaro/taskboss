@@ -1,0 +1,13 @@
+# A job fails once (retryLimit=1, no delay), returns to the queue, then the same
+# job id is reclaimed and completed.
+scenario retry_then_succeed:
+    create queue flaky retryLimit=1 retryDelay=0
+    push flaky message "boom"
+    consume flaky -> j1
+    fail j1 output {"err": "boom"}
+    check j1 state retry
+    consume flaky -> j2 within 1s
+    assert j1 == j2
+    ack j2
+    check j2 ack within 1s
+    assert queue flaky empty

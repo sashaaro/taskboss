@@ -1,3 +1,6 @@
+[workspace]
+members = ["dsltest"]
+
 [package]
 name = "taskboss"
 version = "0.0.0"

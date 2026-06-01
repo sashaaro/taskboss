@@ -1,0 +1,10 @@
+# Two consumers race for a single job. FOR UPDATE SKIP LOCKED guarantees
+# exactly one wins; the other times out empty.
+scenario competing_consumers:
+    #1 create queue jobs
+    #1 push jobs message "only-one"
+    #2 spawn consume jobs -> a within 1s
+    #3 spawn consume jobs -> b within 1s
+    await a
+    await b
+    assert exactly_one_claimed a b

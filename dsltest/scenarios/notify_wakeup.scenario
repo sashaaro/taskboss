@@ -1,0 +1,11 @@
+# Client #2 blocks on LISTEN/NOTIFY before any job exists; client #1's push
+# wakes it across sessions. `await` collects the background consumer's result.
+scenario notify_wakeup:
+    #1 create queue orders
+    #2 spawn consume orders -> msg1 within 2s
+    #1 push orders message "hello world" priority=5
+    await msg1
+    #2 check msg1 state active
+    #2 ack msg1
+    check msg1 ack within 1s
+    assert queue orders empty

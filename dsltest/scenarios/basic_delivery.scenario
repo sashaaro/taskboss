@@ -1,0 +1,9 @@
+# Single client: enqueue one job, claim it, complete it, confirm the queue drains.
+scenario basic_delivery:
+    create queue orders
+    push orders message "hello world" priority=5
+    consume orders -> msg1
+    check msg1 state active
+    ack msg1 output {"ok": true}
+    check msg1 ack within 1s
+    assert queue orders empty
