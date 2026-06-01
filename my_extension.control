@@ -1,0 +1,6 @@
+comment = 'my_extension:  Created by pgrx'
+default_version = '@CARGO_VERSION@'
+module_pathname = 'my_extension'
+relocatable = false
+superuser = true
+trusted = false
