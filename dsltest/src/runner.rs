@@ -237,6 +237,44 @@ impl Runner {
                 }
                 None => return Err(DslError::runtime(line, format!("check {var} empty: {var} is not bound"))),
             },
+            Command::CheckData { var, expected } => {
+                let j = self.job(var, line)?;
+                let actual = {
+                    let c = self.client_for(client)?;
+                    let row = c
+                        .query_opt(
+                            "SELECT data FROM boss.job WHERE name = $1 AND id = $2::text::uuid",
+                            &[&j.queue, &j.id],
+                        )
+                        .map_err(db)?;
+                    row.map(|r| r.get::<_, Option<Value>>(0))
+                };
+                match actual {
+                    Some(Some(ref v)) if v == expected => {}
+                    Some(other) => {
+                        return Err(DslError::assert(
+                            line,
+                            format!("check {var} data: expected {expected}, got {}", render(&other)),
+                        ))
+                    }
+                    None => {
+                        return Err(DslError::assert(line, format!("check {var} data: job not found")))
+                    }
+                }
+            }
+            Command::CheckGone { var } => {
+                let j = self.job(var, line)?;
+                let state = {
+                    let c = self.client_for(client)?;
+                    job_state(c, &j)?
+                };
+                if let Some(s) = state {
+                    return Err(DslError::assert(
+                        line,
+                        format!("check {var} gone: job still exists (state={s})"),
+                    ));
+                }
+            }
             Command::AssertVarEq { left, right } => {
                 let a = self.job(left, line)?;
                 let b = self.job(right, line)?;
@@ -331,24 +369,24 @@ fn consume_wait(c: &mut Client, queue: &str, within: Option<Duration>) -> Result
         return Ok(Some(j));
     }
 
+    // Wake on NOTIFY, but also poll on a short interval: time-based readiness
+    // (startAfter / retryDelay) and lost races emit no notification.
+    let poll = Duration::from_millis(50);
     let deadline = Instant::now() + within;
     loop {
         let now = Instant::now();
         if now >= deadline {
             return Ok(None);
         }
-        let woke = {
+        {
+            let wait = (deadline - now).min(poll);
             let mut notifications = c.notifications();
-            let mut iter = notifications.timeout_iter(deadline - now);
-            iter.next().map_err(db)?.is_some()
-        };
-        if !woke {
-            return Ok(None); // timed out
+            let mut iter = notifications.timeout_iter(wait);
+            iter.next().map_err(db)?; // returns on a NOTIFY or after `wait`
         }
         if let Some(j) = fetch_one(c, queue)? {
             return Ok(Some(j));
         }
-        // Lost the race to another consumer; keep waiting until the deadline.
     }
 }
 
@@ -411,6 +449,14 @@ fn quote_ident(ident: &str) -> String {
 
 fn empty_obj() -> Value {
     Value::Object(serde_json::Map::new())
+}
+
+/// Display a job's `data` for assertion messages (jsonb may be SQL NULL).
+fn render(data: &Option<Value>) -> String {
+    match data {
+        Some(v) => v.to_string(),
+        None => "NULL".to_string(),
+    }
 }
 
 fn db(e: postgres::Error) -> DslError {

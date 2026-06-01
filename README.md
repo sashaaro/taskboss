@@ -102,7 +102,12 @@ cargo run -p dsltest -- scenarios/basic_delivery.scenario
 # DSN можно переопределить через TASKBOSS_DSN
 ```
 
-Полное описание грамматики DSL — в [dsltest/README.md](dsltest/README.md).
+Покрытие: доставка и push (`basic_delivery`, `notify_wakeup`); корректность очереди
+(`priority_ordering`, `fifo_ordering`, `delayed_start`, `retry_then_succeed`,
+`retry_exhaustion`, `retry_delay`, `expire_via_maintain`, `retention_purge`); конкуренция
+(`competing_consumers`, `multi_consumer_exactly_once`, `concurrent_producers`).
+
+Полное описание грамматики DSL и список сценариев — в [dsltest/README.md](dsltest/README.md).
 
 ## Вдохновение
 

@@ -1,0 +1,10 @@
+# startAfter delays readiness: not claimable immediately, claimable after the delay.
+scenario delayed_start:
+    create queue d
+    push d message "later" startAfter=1
+    spawn consume d -> early within 500ms
+    await early
+    check early empty
+    consume d -> late within 2s
+    check late data "later"
+    assert queue d empty

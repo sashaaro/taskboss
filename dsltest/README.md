@@ -50,6 +50,8 @@ scenario <имя>:
      check  <var> state <created|retry|active|completed|cancelled|failed>
      check  <var> ack [within <dur>]               # дождаться состояния completed
      check  <var> empty                            # фоновый consume истёк без задачи
+     check  <var> data <json>                      # полезная нагрузка задачи равна JSON
+     check  <var> gone                             # задача удалена (например, по retention)
      assert <var> == <var>                          # один и тот же job id
      assert exactly_one_claimed <var> <var> [...]   # ровно один из var получил задачу
 ```
@@ -61,12 +63,29 @@ scenario <имя>:
 
 ## Сценарии
 
-Файлы сценариев лежат в корне репозитория, в каталоге [`scenarios/`](../scenarios):
+Файлы сценариев лежат в корне репозитория, в каталоге [`scenarios/`](../scenarios).
+
+Базовая доставка и push:
 
 - [basic_delivery](../scenarios/basic_delivery.scenario) — один клиент: enqueue → claim → ack → очередь пуста.
 - [notify_wakeup](../scenarios/notify_wakeup.scenario) — `#2` ждёт на `LISTEN/NOTIFY`, `#1 push` будит его.
-- [competing_consumers](../scenarios/competing_consumers.scenario) — два консьюмера за одну задачу, ровно один выигрывает.
+
+Корректность очереди:
+
+- [priority_ordering](../scenarios/priority_ordering.scenario) — задача с большим приоритетом забирается первой.
+- [fifo_ordering](../scenarios/fifo_ordering.scenario) — при равном приоритете порядок FIFO (по `created_on`).
+- [delayed_start](../scenarios/delayed_start.scenario) — `startAfter` откладывает готовность задачи.
 - [retry_then_succeed](../scenarios/retry_then_succeed.scenario) — `fail` → `retry` → повторный claim того же job → `ack`.
+- [retry_exhaustion](../scenarios/retry_exhaustion.scenario) — после исчерпания `retryLimit` задача уходит в `failed`.
+- [retry_delay](../scenarios/retry_delay.scenario) — `retryDelay` откладывает повторный claim.
+- [expire_via_maintain](../scenarios/expire_via_maintain.scenario) — `maintain()` возвращает зависшую `active`-задачу в `retry`.
+- [retention_purge](../scenarios/retention_purge.scenario) — `maintain()` удаляет завершённую задачу по retention.
+
+Конкуренция:
+
+- [competing_consumers](../scenarios/competing_consumers.scenario) — два консьюмера за одну задачу, ровно один выигрывает.
+- [multi_consumer_exactly_once](../scenarios/multi_consumer_exactly_once.scenario) — 3 задачи, 3 консьюмера: каждый получает свою, без потерь и дублей.
+- [concurrent_producers](../scenarios/concurrent_producers.scenario) — несколько сессий пишут параллельно, все задачи доходят.
 
 ## Структура
 

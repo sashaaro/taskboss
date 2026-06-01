@@ -1,0 +1,13 @@
+# Same priority: jobs are claimed in insertion order (FIFO by created_on).
+scenario fifo_ordering:
+    create queue f
+    push f message "first"
+    push f message "second"
+    push f message "third"
+    consume f -> a
+    check a data "first"
+    consume f -> b
+    check b data "second"
+    consume f -> c
+    check c data "third"
+    assert queue f empty

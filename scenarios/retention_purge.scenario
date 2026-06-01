@@ -1,0 +1,9 @@
+# With retentionSeconds=0 a completed job is purged by maintain().
+scenario retention_purge:
+    create queue r retentionSeconds=0
+    push r message "ephemeral"
+    consume r -> j
+    ack j
+    check j state completed
+    maintain
+    check j gone

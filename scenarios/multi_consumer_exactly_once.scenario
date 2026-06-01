@@ -1,0 +1,17 @@
+# Three jobs, three concurrent consumers: each claims a distinct job, none lost or
+# double-delivered (SKIP LOCKED). All end active; the queue drains.
+scenario multi_consumer_exactly_once:
+    #1 create queue mc
+    #1 push mc message "a"
+    #1 push mc message "b"
+    #1 push mc message "c"
+    #2 spawn consume mc -> x within 1s
+    #3 spawn consume mc -> y within 1s
+    #4 spawn consume mc -> z within 1s
+    await x
+    await y
+    await z
+    check x state active
+    check y state active
+    check z state active
+    assert queue mc empty

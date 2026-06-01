@@ -1,0 +1,9 @@
+# An active job that overran expireInSeconds is reclaimed by maintain() (back to retry).
+scenario expire_via_maintain:
+    create queue e
+    push e message "stuck" expireInSeconds=0
+    consume e -> j
+    check j state active
+    maintain
+    check j state retry
+    assert queue e size 1

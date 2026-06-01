@@ -1,0 +1,10 @@
+# Higher priority is claimed first, regardless of insertion order.
+scenario priority_ordering:
+    create queue p
+    push p message "low" priority=1
+    push p message "high" priority=10
+    consume p -> first
+    check first data "high"
+    consume p -> second
+    check second data "low"
+    assert queue p empty

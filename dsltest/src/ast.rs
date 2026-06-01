@@ -43,6 +43,8 @@ pub enum Command {
     CheckState { var: String, state: String },
     CheckAck { var: String, within: Option<Duration> },
     CheckEmpty { var: String },
+    CheckData { var: String, expected: Value },
+    CheckGone { var: String },
     AssertVarEq { left: String, right: String },
     AssertExactlyOneClaimed { vars: Vec<String> },
 }

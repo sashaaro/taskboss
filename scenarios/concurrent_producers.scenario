@@ -1,0 +1,11 @@
+# Three separate sessions enqueue concurrently; all jobs land and then drain.
+scenario concurrent_producers:
+    #1 create queue cp
+    #1 push cp message "p1"
+    #2 push cp message "p2"
+    #3 push cp message "p3"
+    assert queue cp size 3
+    consume cp -> a
+    consume cp -> b
+    consume cp -> c
+    assert queue cp empty

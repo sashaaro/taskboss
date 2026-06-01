@@ -1,0 +1,14 @@
+# A failed job with retryDelay is not re-claimable until the delay elapses.
+scenario retry_delay:
+    create queue rd retryLimit=2 retryDelay=1
+    push rd message "slow"
+    consume rd -> j1
+    fail j1
+    check j1 state retry
+    spawn consume rd -> early within 500ms
+    await early
+    check early empty
+    consume rd -> j2 within 2s
+    assert j1 == j2
+    ack j2
+    assert queue rd empty

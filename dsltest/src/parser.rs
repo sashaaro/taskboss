@@ -247,6 +247,8 @@ enum CheckKind {
     State(String),
     Ack(Option<Duration>),
     Empty,
+    Data(Value),
+    Gone,
 }
 
 fn check_cmd(input: &mut &str) -> ModalResult<Command> {
@@ -256,6 +258,8 @@ fn check_cmd(input: &mut &str) -> ModalResult<Command> {
     let kind = alt((
         (("state", space1), state_lit).map(|(_, s)| CheckKind::State(s.to_string())),
         ("ack", opt(preceded((space1, "within", space1), duration))).map(|(_, w)| CheckKind::Ack(w)),
+        (("data", space1), json_value).map(|(_, v)| CheckKind::Data(v)),
+        "gone".map(|_| CheckKind::Gone),
         "empty".map(|_| CheckKind::Empty),
     ))
     .parse_next(input)?;
@@ -263,6 +267,8 @@ fn check_cmd(input: &mut &str) -> ModalResult<Command> {
         CheckKind::State(state) => Command::CheckState { var, state },
         CheckKind::Ack(within) => Command::CheckAck { var, within },
         CheckKind::Empty => Command::CheckEmpty { var },
+        CheckKind::Data(expected) => Command::CheckData { var, expected },
+        CheckKind::Gone => Command::CheckGone { var },
     })
 }
 
@@ -388,6 +394,20 @@ mod tests {
         let err = parse_scenario(src).unwrap_err();
         assert_eq!(err.line, 2);
         assert!(err.msg.contains("capacity"), "msg was: {}", err.msg);
+    }
+
+    #[test]
+    fn parses_check_data_and_gone() {
+        let src = "scenario demo:\n    consume q -> m1\n    check m1 data \"high\"\n    check m1 gone\n";
+        let sc = parse_scenario(src).expect("parse");
+        match &sc.statements[1].command {
+            Command::CheckData { var, expected } => {
+                assert_eq!(var, "m1");
+                assert_eq!(expected, &Value::String("high".to_string()));
+            }
+            other => panic!("expected CheckData, got {other:?}"),
+        }
+        assert!(matches!(sc.statements[2].command, Command::CheckGone { .. }));
     }
 
     #[test]

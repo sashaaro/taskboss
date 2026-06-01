@@ -1,0 +1,12 @@
+# With retryLimit=1 the job retries once, then a second failure moves it to 'failed'.
+scenario retry_exhaustion:
+    create queue x retryLimit=1
+    push x message "doomed"
+    consume x -> j1
+    fail j1
+    check j1 state retry
+    consume x -> j2 within 1s
+    assert j1 == j2
+    fail j2
+    check j2 state failed
+    assert queue x empty
