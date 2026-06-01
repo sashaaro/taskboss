@@ -77,6 +77,15 @@ mod boss {
 /// library is loaded via `shared_preload_libraries`.
 #[pg_guard]
 pub extern "C-unwind" fn _PG_init() {
+    // GUCs (PGC_POSTMASTER) and static background workers can only be registered
+    // while the postmaster is processing shared_preload_libraries. When the
+    // library is loaded lazily (e.g. CREATE EXTENSION without preloading), do
+    // nothing so the extension still installs — maintenance just won't run
+    // automatically until the library is added to shared_preload_libraries.
+    if unsafe { !pg_sys::process_shared_preload_libraries_in_progress } {
+        return;
+    }
+
     GucRegistry::define_string_guc(
         c"taskboss.database",
         c"Database the queue maintenance worker connects to",
