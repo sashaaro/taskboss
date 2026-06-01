@@ -1,5 +1,5 @@
 [package]
-name = "my_extension"
+name = "taskboss"
 version = "0.0.0"
 edition = "2021"
 

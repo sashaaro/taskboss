@@ -1,4 +1,4 @@
-# my_extension
+# taskboss
 
 Нативное расширение очереди задач для PostgreSQL, написанное на Rust с использованием [pgrx](https://github.com/pgcentralfoundation/pgrx). Вдохновлено [pg-boss](https://github.com/timgit/pg-boss).
 
@@ -19,8 +19,8 @@
 
 - PostgreSQL 18
 - Rust toolchain + `cargo pgrx`
-- Для фонового воркера обслуживания: `shared_preload_libraries = 'my_extension'` в `postgresql.conf`
-  (требует рестарта PostgreSQL) и GUC `my_extension.database` с именем БД, где установлено расширение.
+- Для фонового воркера обслуживания: `shared_preload_libraries = 'taskboss'` в `postgresql.conf`
+  (требует рестарта PostgreSQL) и GUC `taskboss.database` с именем БД, где установлено расширение.
 
 ## Быстрый старт
 
@@ -38,7 +38,7 @@ cargo pgrx run pg18
 После подключения к psql:
 
 ```sql
-CREATE EXTENSION my_extension;
+CREATE EXTENSION taskboss;
 
 -- создать очередь и отправить задачу
 SELECT boss.create_queue('email-welcome');

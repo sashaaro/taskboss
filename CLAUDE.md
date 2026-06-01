@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-This is a PostgreSQL extension written in Rust using [pgrx](https://github.com/pgcentralfoundation/pgrx) (v0.18.1), targeting PostgreSQL 18 by default. The extension is scaffolded via `cargo pgrx new` and compiled as a `cdylib`.
+`taskboss` is a native PostgreSQL job-queue extension written in Rust using [pgrx](https://github.com/pgcentralfoundation/pgrx) (v0.18.1), targeting PostgreSQL 18 by default and compiled as a `cdylib`. It is inspired by [pg-boss](https://github.com/timgit/pg-boss) but runs entirely inside PostgreSQL (no external operator process). The crate/extension/library are all named `taskboss`; the user-facing SQL objects live in the `boss` schema.
 
 ## Commands
 
@@ -29,7 +29,7 @@ cargo pgrx test pg18
 ### Run a single test by name
 
 ```bash
-cargo pgrx test pg18 -- test_hello_my_extension
+cargo pgrx test pg18 -- send_fetch_complete
 ```
 
 ### Run pg_regress integration tests
@@ -63,18 +63,18 @@ dedicated `boss` schema. See `docs`/plan and `README.md` for the user-facing API
   `boss.complete`, `boss.fail` (retry logic), `boss.get_queues`, and `boss.maintain`.
 - **[src/lib.rs](src/lib.rs)** — Rust entry points: `#[pg_schema] mod boss` with the `#[pg_extern]`
   control functions `create_queue`/`delete_queue` (over `Spi`); `_PG_init` registering GUCs
-  (`my_extension.database`, `my_extension.maintenance_interval`) and the maintenance background
+  (`taskboss.database`, `taskboss.maintenance_interval`) and the maintenance background
   worker; `background_worker_main` which calls `boss.maintain()` on a timer. `#[pg_test]` tests
   live in `mod tests`.
 - **Delivery model**: consumers `LISTEN boss_<queue>` and are woken by the `pg_notify` issued in
   `boss.send`; the actual job claim still goes through `boss.fetch` (SKIP LOCKED → exactly-once).
   Without listeners, the queue degrades to plain polling via `boss.fetch`.
-- **Background worker** requires `shared_preload_libraries = 'my_extension'` (needs a restart) and
-  attaches to the single database named by the `my_extension.database` GUC. `pg_test` sets the
+- **Background worker** requires `shared_preload_libraries = 'taskboss'` (needs a restart) and
+  attaches to the single database named by the `taskboss.database` GUC. `pg_test` sets the
   preload via `postgresql_conf_options()`.
-- **[my_extension.control](my_extension.control)** — PostgreSQL extension control file; `@CARGO_VERSION@` is substituted by pgrx at build time.
+- **[taskboss.control](taskboss.control)** — PostgreSQL extension control file; `@CARGO_VERSION@` is substituted by pgrx at build time.
 - **[sql/](sql/)** — SQL migration files loaded by pgrx to define or upgrade the extension's SQL-level objects.
-- **[tests/pg_regress/](tests/pg_regress/)** — pg_regress integration test scripts; the setup file runs `CREATE EXTENSION my_extension` to bootstrap the test database.
+- **[tests/pg_regress/](tests/pg_regress/)** — pg_regress integration test scripts; the setup file runs `CREATE EXTENSION taskboss` to bootstrap the test database.
 - **[.cargo/config.toml](.cargo/config.toml)** — sets `-Wl,-undefined,dynamic_lookup` on macOS so PostgreSQL symbols resolve at runtime rather than link time.
 
 ## Key pgrx conventions

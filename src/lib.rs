@@ -1,4 +1,4 @@
-//! `my_extension` — a native PostgreSQL job-queue extension inspired by
+//! `taskboss` — a native PostgreSQL job-queue extension inspired by
 //! [pg-boss](https://github.com/timgit/pg-boss).
 //!
 //! Unlike pg-boss (a Node.js library that polls and maintains the queue from an
@@ -78,16 +78,16 @@ mod boss {
 #[pg_guard]
 pub extern "C-unwind" fn _PG_init() {
     GucRegistry::define_string_guc(
-        c"my_extension.database",
+        c"taskboss.database",
         c"Database the queue maintenance worker connects to",
-        c"A background worker attaches to a single database; set this to the database where my_extension is installed.",
+        c"A background worker attaches to a single database; set this to the database where taskboss is installed.",
         &MAINTENANCE_DB,
         GucContext::Postmaster,
         GucFlags::default(),
     );
 
     GucRegistry::define_int_guc(
-        c"my_extension.maintenance_interval",
+        c"taskboss.maintenance_interval",
         c"Seconds between queue maintenance runs",
         c"How often the background worker runs boss.maintain() to expire stale jobs and purge old ones.",
         &MAINTENANCE_INTERVAL,
@@ -97,9 +97,9 @@ pub extern "C-unwind" fn _PG_init() {
         GucFlags::default(),
     );
 
-    BackgroundWorkerBuilder::new("my_extension: queue maintenance")
+    BackgroundWorkerBuilder::new("taskboss: queue maintenance")
         .set_function("background_worker_main")
-        .set_library("my_extension")
+        .set_library("taskboss")
         .set_restart_time(Some(Duration::from_secs(5)))
         .enable_spi_access()
         .load();
@@ -256,6 +256,6 @@ pub mod pg_test {
     #[must_use]
     pub fn postgresql_conf_options() -> Vec<&'static str> {
         // Load the library so _PG_init runs and the background worker starts.
-        vec!["shared_preload_libraries = 'my_extension'"]
+        vec!["shared_preload_libraries = 'taskboss'"]
     }
 }
