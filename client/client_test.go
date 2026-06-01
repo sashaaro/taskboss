@@ -24,7 +24,7 @@ func dsn() string {
 }
 
 // newTestClient connects, ensures the extension exists, and creates a uniquely
-// named queue that is dropped when the test finishes. It skips the test if the
+// named queue that is dropped when the test finishes. It fails the test if the
 // database is unreachable.
 func newTestClient(t *testing.T) (*Client, string) {
 	t.Helper()
@@ -32,12 +32,12 @@ func newTestClient(t *testing.T) (*Client, string) {
 
 	c, err := New(ctx, dsn())
 	if err != nil {
-		t.Skipf("cannot connect to %s: %v", dsn(), err)
+		t.Fatalf("cannot connect to %s: %v", dsn(), err)
 	}
 
 	if _, err := c.pool.Exec(ctx, "CREATE EXTENSION IF NOT EXISTS taskboss"); err != nil {
 		c.Close()
-		t.Skipf("taskboss extension unavailable: %v", err)
+		t.Fatalf("taskboss extension unavailable: %v", err)
 	}
 
 	queue := "test_" + uuid.NewString()[:8]
