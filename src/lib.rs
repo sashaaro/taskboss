@@ -37,7 +37,7 @@ mod boss {
     /// Create a queue (idempotent). `options` (jsonb) may set `retryLimit`,
     /// `retryDelay`, `expireInSeconds`, `retentionSeconds`.
     #[pg_extern]
-    fn create_queue(name: &str, options: default!(pgrx::Json, "'{}'")) -> bool {
+    fn create_queue(name: &str, options: default!(pgrx::JsonB, "'{}'")) -> bool {
         let o = &options.0;
         let as_i32 = |key: &str, default: i32| {
             o.get(key).and_then(|v| v.as_i64()).map(|v| v as i32).unwrap_or(default)
