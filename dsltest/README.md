@@ -12,9 +12,9 @@
 # 1. поднять управляемый pgrx-инстанс с расширением (порт 28818, БД taskboss)
 cargo pgrx run pg18        # \q сразу — инстанс остаётся запущенным
 
-# 2. прогнать сценарии
-cargo run -p dsltest -- dsltest/scenarios          # директория целиком
-cargo run -p dsltest -- dsltest/scenarios/basic_delivery.scenario
+# 2. прогнать сценарии (лежат в корне репозитория, в scenarios/)
+cargo run -p dsltest -- scenarios                  # директория целиком
+cargo run -p dsltest -- scenarios/basic_delivery.scenario
 
 # DSN можно переопределить
 TASKBOSS_DSN=postgres://user@host:5432/db cargo run -p dsltest
@@ -61,10 +61,12 @@ scenario <имя>:
 
 ## Сценарии
 
-- [basic_delivery](scenarios/basic_delivery.scenario) — один клиент: enqueue → claim → ack → очередь пуста.
-- [notify_wakeup](scenarios/notify_wakeup.scenario) — `#2` ждёт на `LISTEN/NOTIFY`, `#1 push` будит его.
-- [competing_consumers](scenarios/competing_consumers.scenario) — два консьюмера за одну задачу, ровно один выигрывает.
-- [retry_then_succeed](scenarios/retry_then_succeed.scenario) — `fail` → `retry` → повторный claim того же job → `ack`.
+Файлы сценариев лежат в корне репозитория, в каталоге [`scenarios/`](../scenarios):
+
+- [basic_delivery](../scenarios/basic_delivery.scenario) — один клиент: enqueue → claim → ack → очередь пуста.
+- [notify_wakeup](../scenarios/notify_wakeup.scenario) — `#2` ждёт на `LISTEN/NOTIFY`, `#1 push` будит его.
+- [competing_consumers](../scenarios/competing_consumers.scenario) — два консьюмера за одну задачу, ровно один выигрывает.
+- [retry_then_succeed](../scenarios/retry_then_succeed.scenario) — `fail` → `retry` → повторный claim того же job → `ack`.
 
 ## Структура
 

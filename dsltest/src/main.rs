@@ -4,8 +4,8 @@
 //! Postgres instance, one numbered client per real session. Usage:
 //!
 //! ```text
-//! cargo run -p dsltest -- dsltest/scenarios            # a directory
-//! cargo run -p dsltest -- dsltest/scenarios/basic.scenario  # specific files
+//! cargo run -p dsltest -- scenarios                    # a directory
+//! cargo run -p dsltest -- scenarios/basic.scenario     # specific files
 //! TASKBOSS_DSN=postgres://user@host:5432/db cargo run -p dsltest
 //! ```
 
@@ -21,7 +21,7 @@ use error::DslError;
 use runner::Runner;
 
 const DEFAULT_DSN: &str = "postgres://sasha@localhost:28818/taskboss";
-const DEFAULT_DIR: &str = "dsltest/scenarios";
+const DEFAULT_DIR: &str = "scenarios";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();

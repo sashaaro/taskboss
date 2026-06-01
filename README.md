@@ -82,6 +82,28 @@ cargo pgrx test pg18
 cargo pgrx bench pg18
 ```
 
+## Тесты-сценарии (DSL)
+
+Помимо `pg_test`-тестов, в репозитории есть декларативные интеграционные тесты на
+небольшом DSL. Сценарии лежат в каталоге [`scenarios/`](scenarios), а раннер
+[`dsltest`](dsltest) (парсер на [winnow](https://github.com/winnow-rs/winnow))
+выполняет их против **запущенного** инстанса. Каждый клиент `#N` — это отдельная
+сессия, поэтому проверяются и конкуренция консьюмеров (`SKIP LOCKED`), и пробуждение
+по `LISTEN`/`NOTIFY` между разными сессиями.
+
+```bash
+# 1. поднять инстанс с расширением (порт 28818, БД taskboss); \q — инстанс остаётся жив
+cargo pgrx run pg18
+
+# 2. прогнать все сценарии (или указать конкретные файлы)
+cargo run -p dsltest -- scenarios
+cargo run -p dsltest -- scenarios/basic_delivery.scenario
+
+# DSN можно переопределить через TASKBOSS_DSN
+```
+
+Полное описание грамматики DSL — в [dsltest/README.md](dsltest/README.md).
+
 ## Вдохновение
 
 [pg-boss](https://github.com/timgit/pg-boss) — отличная реализация очереди на PostgreSQL для Node.js. Этот проект преследует ту же цель, но реализует логику очереди как нативное серверное расширение PostgreSQL, минуя накладные расходы внешнего процесса.
