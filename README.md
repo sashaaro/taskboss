@@ -4,20 +4,23 @@
 
 В отличие от pg-boss (Node.js-библиотека), это расширение живёт прямо внутри PostgreSQL — без внешних процессов и дополнительных зависимостей.
 
-## Возможности (planned)
+## Возможности (v1 / MVP)
 
-- Надёжная доставка задач через `SKIP LOCKED` — гарантия "exactly-once" обработки
-- Приоритеты очередей и dead letter queue
-- Отложенный запуск и cron-расписание
-- Автоматические retry с экспоненциальным backoff
-- Rate limiting и debounce через политики очередей
-- Fan-out через pub/sub API
-- Работа в распределённых средах (multi-master / Kubernetes)
+- Реестр очередей: `boss.create_queue` / `boss.delete_queue` / `boss.get_queues`
+- Надёжная доставка задач через `SKIP LOCKED` — exactly-once-захват конкурентными консьюмерами
+- Push-доставка новых задач через встроенный `LISTEN`/`NOTIFY`
+- Приоритеты, отложенный запуск (`startAfter`), базовый retry с задержкой
+- Фоновый воркер: автоматический expire зависших задач и удаление по retention
+
+Отложено на будущие версии: cron-расписания, pub/sub, политики очередей (singleton/short/stately),
+партиционирование, heartbeat-мониторинг, throttle/debounce, dead-letter.
 
 ## Требования
 
 - PostgreSQL 18
 - Rust toolchain + `cargo pgrx`
+- Для фонового воркера обслуживания: `shared_preload_libraries = 'my_extension'` в `postgresql.conf`
+  (требует рестарта PostgreSQL) и GUC `my_extension.database` с именем БД, где установлено расширение.
 
 ## Быстрый старт
 
@@ -36,8 +39,35 @@ cargo pgrx run pg18
 
 ```sql
 CREATE EXTENSION my_extension;
-SELECT hello_my_extension();
+
+-- создать очередь и отправить задачу
+SELECT boss.create_queue('email-welcome');
+SELECT boss.send('email-welcome', '{"to": "a@b.c"}');
+
+-- consumer: атомарно забрать и завершить задачу
+SELECT * FROM boss.fetch('email-welcome', 1);
+SELECT boss.complete('email-welcome', '<job-id>', '{"ok": true}');
 ```
+
+### Push-доставка через LISTEN/NOTIFY
+
+Чтобы не опрашивать очередь в цикле, консьюмер подписывается на канал очереди и просыпается
+по уведомлению, после чего атомарно забирает задачу через `fetch`:
+
+```sql
+LISTEN boss_email_welcome;                       -- канал = boss_<имя_очереди>
+-- ... клиент блокируется до NOTIFY от boss.send() ...
+SELECT * FROM boss.fetch('email-welcome', 1);
+```
+
+## Параметры функций
+
+- `boss.send(name, data jsonb, options jsonb)` — `options`: `priority`, `startAfter`
+  (секунды или ISO-строка), `retryLimit`, `retryDelay`, `expireInSeconds`.
+- `boss.create_queue(name, options jsonb)` — `options`: `retryLimit`, `retryDelay`,
+  `expireInSeconds`, `retentionSeconds` (значения по умолчанию для задач очереди).
+- `boss.fetch(name, batch_size)` → `SETOF boss.job`.
+- `boss.complete(name, id, output jsonb)` / `boss.fail(name, id, output jsonb)` → `boolean`.
 
 ## Разработка
 
