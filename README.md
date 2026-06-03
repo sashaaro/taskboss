@@ -1,28 +1,30 @@
 # taskboss
 
-Нативное расширение очереди задач для PostgreSQL, написанное на Rust с использованием [pgrx](https://github.com/pgcentralfoundation/pgrx). Вдохновлено [pg-boss](https://github.com/timgit/pg-boss).
+🇷🇺 [Русский](README.ru.md)
 
-В отличие от pg-boss (Node.js-библиотека), это расширение живёт прямо внутри PostgreSQL — без внешних процессов и дополнительных зависимостей.
+A native PostgreSQL job-queue extension written in Rust using [pgrx](https://github.com/pgcentralfoundation/pgrx). Inspired by [pg-boss](https://github.com/timgit/pg-boss).
 
-## Возможности (v1 / MVP)
+Unlike pg-boss (a Node.js library), this extension lives entirely inside PostgreSQL — no external processes, no extra dependencies.
 
-- Реестр очередей: `boss.create_queue` / `boss.delete_queue` / `boss.get_queues`
-- Надёжная доставка задач через `SKIP LOCKED` — exactly-once-захват конкурентными консьюмерами
-- Push-доставка новых задач через встроенный `LISTEN`/`NOTIFY`
-- Приоритеты, отложенный запуск (`startAfter`), базовый retry с задержкой
-- Фоновый воркер: автоматический expire зависших задач и удаление по retention
+## Features (v1 / MVP)
 
-Отложено на будущие версии: cron-расписания, pub/sub, политики очередей (singleton/short/stately),
-партиционирование, heartbeat-мониторинг, throttle/debounce, dead-letter.
+- Queue registry: `boss.create_queue` / `boss.delete_queue` / `boss.get_queues`
+- Reliable job delivery via `SKIP LOCKED` — exactly-once claim by competing consumers
+- Push delivery of new jobs via built-in `LISTEN`/`NOTIFY`
+- Priorities, deferred start (`startAfter`), basic retry with delay
+- Background worker: automatic expiry of stuck jobs and retention-based cleanup
 
-## Требования
+Deferred to future versions: cron schedules, pub/sub, queue policies (singleton/short/stately),
+partitioning, heartbeat monitoring, throttle/debounce, dead-letter queues.
+
+## Requirements
 
 - PostgreSQL 18
 - Rust toolchain + `cargo pgrx`
-- Для фонового воркера обслуживания: `shared_preload_libraries = 'taskboss'` в `postgresql.conf`
-  (требует рестарта PostgreSQL) и GUC `taskboss.database` с именем БД, где установлено расширение.
+- For the maintenance background worker: `shared_preload_libraries = 'taskboss'` in `postgresql.conf`
+  (requires a PostgreSQL restart) and the `taskboss.database` GUC set to the database where the extension is installed.
 
-## Быстрый старт
+## Quick Start
 
 ### Docker
 
@@ -33,99 +35,98 @@ docker run -d --name taskboss \
   ghcr.io/sashaaro/taskboss:latest
 ```
 
-Подключиться к запущенному контейнеру:
+Connect to the running container:
 
 ```bash
 docker exec -it taskboss psql -U postgres
 ```
 
-### Из исходников
+### From source
 
 ```bash
-# Установить cargo-pgrx
+# Install cargo-pgrx
 cargo install cargo-pgrx
 
-# Инициализировать управляемые инсталляции PostgreSQL
+# Initialise managed PostgreSQL installations
 cargo pgrx init
 
-# Запустить расширение в PostgreSQL 18
+# Run the extension inside PostgreSQL 18
 cargo pgrx run pg18
 ```
 
-После подключения к psql:
+Once connected to psql:
 
 ```sql
 CREATE EXTENSION taskboss;
 
--- создать очередь и отправить задачу
+-- create a queue and send a job
 SELECT boss.create_queue('email-welcome');
 SELECT boss.send('email-welcome', '{"to": "a@b.c"}');
 
--- consumer: атомарно забрать и завершить задачу
+-- consumer: atomically claim and complete a job
 SELECT * FROM boss.fetch('email-welcome', 1);
 SELECT boss.complete('email-welcome', '<job-id>', '{"ok": true}');
 ```
 
-### Push-доставка через LISTEN/NOTIFY
+### Push delivery via LISTEN/NOTIFY
 
-Чтобы не опрашивать очередь в цикле, консьюмер подписывается на канал очереди и просыпается
-по уведомлению, после чего атомарно забирает задачу через `fetch`:
+Instead of polling in a loop, a consumer subscribes to the queue channel and wakes up
+on notification, then atomically claims the job via `fetch`:
 
 ```sql
-LISTEN boss_email_welcome;                       -- канал = boss_<имя_очереди>
--- ... клиент блокируется до NOTIFY от boss.send() ...
+LISTEN boss_email_welcome;                       -- channel = boss_<queue_name>
+-- ... client blocks until NOTIFY fired by boss.send() ...
 SELECT * FROM boss.fetch('email-welcome', 1);
 ```
 
-## Параметры функций
+## Function Reference
 
 - `boss.send(name, data jsonb, options jsonb)` — `options`: `priority`, `startAfter`
-  (секунды или ISO-строка), `retryLimit`, `retryDelay`, `expireInSeconds`.
+  (seconds or ISO string), `retryLimit`, `retryDelay`, `expireInSeconds`.
 - `boss.create_queue(name, options jsonb)` — `options`: `retryLimit`, `retryDelay`,
-  `expireInSeconds`, `retentionSeconds` (значения по умолчанию для задач очереди).
+  `expireInSeconds`, `retentionSeconds` (default values for jobs in this queue).
 - `boss.fetch(name, batch_size)` → `SETOF boss.job`.
 - `boss.complete(name, id, output jsonb)` / `boss.fail(name, id, output jsonb)` → `boolean`.
 
-## Разработка
+## Development
 
 ```bash
-# Сборка
+# Build
 cargo pgrx build
 
-# Тесты (поднимает временный инстанс PostgreSQL)
+# Tests (spins up a temporary PostgreSQL instance)
 cargo pgrx test pg18
 
-# Бенчмарки
+# Benchmarks
 cargo pgrx bench pg18
 ```
 
-## Тесты-сценарии (DSL)
+## Scenario Tests (DSL)
 
-Помимо `pg_test`-тестов, в репозитории есть декларативные интеграционные тесты на
-небольшом DSL. Сценарии лежат в каталоге [`scenarios/`](scenarios), а раннер
-[`dsltest`](dsltest) (парсер на [winnow](https://github.com/winnow-rs/winnow))
-выполняет их против **запущенного** инстанса. Каждый клиент `#N` — это отдельная
-сессия, поэтому проверяются и конкуренция консьюмеров (`SKIP LOCKED`), и пробуждение
-по `LISTEN`/`NOTIFY` между разными сессиями.
+In addition to `pg_test` unit tests, the repository includes declarative integration tests written
+in a small DSL. Scenarios live in the [`scenarios/`](scenarios) directory; the
+[`dsltest`](dsltest) runner (a parser built with [winnow](https://github.com/winnow-rs/winnow))
+executes them against a **running** instance. Each client `#N` is an independent session, so
+consumer competition (`SKIP LOCKED`) and cross-session `LISTEN`/`NOTIFY` wakeups are both covered.
 
 ```bash
-# 1. поднять инстанс с расширением (порт 28818, БД taskboss); \q — инстанс остаётся жив
+# 1. start an instance with the extension (port 28818, DB taskboss); \q keeps it alive
 cargo pgrx run pg18
 
-# 2. прогнать все сценарии (или указать конкретные файлы)
+# 2. run all scenarios (or pass specific files)
 cargo run -p dsltest -- scenarios
 cargo run -p dsltest -- scenarios/basic_delivery.scenario
 
-# DSN можно переопределить через TASKBOSS_DSN
+# Override the DSN via TASKBOSS_DSN
 ```
 
-Покрытие: доставка и push (`basic_delivery`, `notify_wakeup`); корректность очереди
+Coverage: delivery and push (`basic_delivery`, `notify_wakeup`); queue correctness
 (`priority_ordering`, `fifo_ordering`, `delayed_start`, `retry_then_succeed`,
-`retry_exhaustion`, `retry_delay`, `expire_via_maintain`, `retention_purge`); конкуренция
+`retry_exhaustion`, `retry_delay`, `expire_via_maintain`, `retention_purge`); concurrency
 (`competing_consumers`, `multi_consumer_exactly_once`, `concurrent_producers`).
 
-Полное описание грамматики DSL и список сценариев — в [dsltest/README.md](dsltest/README.md).
+Full DSL grammar description and scenario list: [dsltest/README.md](dsltest/README.md).
 
-## Вдохновение
+## Inspiration
 
-[pg-boss](https://github.com/timgit/pg-boss) — отличная реализация очереди на PostgreSQL для Node.js. Этот проект преследует ту же цель, но реализует логику очереди как нативное серверное расширение PostgreSQL, минуя накладные расходы внешнего процесса.
+[pg-boss](https://github.com/timgit/pg-boss) is an excellent PostgreSQL-backed job queue for Node.js. This project pursues the same goal but implements the queue logic as a native server-side PostgreSQL extension, eliminating the overhead of an external process.
