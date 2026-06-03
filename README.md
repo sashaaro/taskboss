@@ -24,6 +24,23 @@
 
 ## Быстрый старт
 
+### Docker
+
+```bash
+docker run -d --name taskboss \
+  -e POSTGRES_PASSWORD=secret \
+  -p 5432:5432 \
+  ghcr.io/sashaaro/taskboss:latest
+```
+
+Подключиться к запущенному контейнеру:
+
+```bash
+docker exec -it taskboss psql -U postgres
+```
+
+### Из исходников
+
 ```bash
 # Установить cargo-pgrx
 cargo install cargo-pgrx
