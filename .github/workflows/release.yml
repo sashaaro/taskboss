@@ -58,13 +58,13 @@ jobs:
 
       - name: Init pgrx for pg${{ matrix.pg }}
         run: |
-          PG_CONFIG=$(pg_lsclusters -h | awk '{print "/usr/lib/postgresql/"$1"/bin/pg_config"}' | head -1)
-          cargo pgrx init --pg${{ matrix.pg }} "$PG_CONFIG"
+          cargo pgrx init --pg${{ matrix.pg }} /usr/lib/postgresql/${{ matrix.pg }}/bin/pg_config
 
       - name: Build package
         run: |
-          PG_CONFIG=$(pg_lsclusters -h | awk '{print "/usr/lib/postgresql/"$1"/bin/pg_config"}' | head -1)
-          cargo pgrx package --pg-config "$PG_CONFIG" --features pg${{ matrix.pg }}
+          cargo pgrx package \
+            --pg-config /usr/lib/postgresql/${{ matrix.pg }}/bin/pg_config \
+            --features pg${{ matrix.pg }}
 
       - name: Create tarball
         id: tarball
