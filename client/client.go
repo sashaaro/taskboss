@@ -36,6 +36,12 @@ type querier interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
 
+// RowQuerier is the minimal interface required by Send — satisfied by *pgxpool.Pool,
+// *pgxpool.Conn, pgx.Tx, and any other pgx query executor.
+type RowQuerier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
 // Job is a job returned by Fetch / Work.
 type Job struct {
 	ID         uuid.UUID
@@ -73,6 +79,7 @@ type sendOptions struct {
 	RetryLimit      *int
 	RetryDelay      *int
 	ExpireInSeconds *int
+	querier         RowQuerier
 }
 
 // SendOption is a functional option for Send.
@@ -92,6 +99,15 @@ func WithRetryDelay(v int) SendOption { return func(o *sendOptions) { o.RetryDel
 
 // WithExpireInSeconds sets a TTL in seconds after which the job expires.
 func WithExpireInSeconds(v int) SendOption { return func(o *sendOptions) { o.ExpireInSeconds = &v } }
+
+// WithRowQuerier runs the Send INSERT inside the provided transaction (or any
+// other RowQuerier). Use this to make job enqueuing atomic with your business
+// logic: the job is only visible once the caller commits.
+//
+// Note: boss.send emits a pg_notify inside the SQL function. PostgreSQL fires
+// NOTIFY at COMMIT time, so listeners are not woken until the transaction
+// commits — no spurious wakeups on rollback.
+func WithRowQuerier(q RowQuerier) SendOption { return func(o *sendOptions) { o.querier = q } }
 
 // Handler processes a job in Work. Returning nil completes the job; returning
 // an error fails it (which retries until the queue's retry limit is reached).
@@ -169,6 +185,7 @@ func (c *Client) GetQueues(ctx context.Context) ([]Queue, error) {
 
 // Send enqueues a job and returns its id. data is JSON-encoded; pass nil for an
 // empty payload. A NOTIFY is emitted so Work consumers wake up immediately.
+// Pass WithRowQuerier to run the INSERT inside an existing transaction.
 func (c *Client) Send(ctx context.Context, queue string, data any, opts ...SendOption) (uuid.UUID, error) {
 	var so sendOptions
 	for _, opt := range opts {
@@ -180,8 +197,14 @@ func (c *Client) Send(ctx context.Context, queue string, data any, opts ...SendO
 	putInt(o, "retryLimit", so.RetryLimit)
 	putInt(o, "retryDelay", so.RetryDelay)
 	putInt(o, "expireInSeconds", so.ExpireInSeconds)
+
+	q := so.querier
+	if q == nil {
+		q = c.pool
+	}
+
 	var idText string
-	err := c.pool.QueryRow(ctx,
+	err := q.QueryRow(ctx,
 		"SELECT boss.send($1, $2::jsonb, $3::jsonb)::text",
 		queue, encodeData(data), mustJSON(o),
 	).Scan(&idText)

@@ -1,7 +1,5 @@
 # taskboss
 
-🇷🇺 [Русский](README.ru.md)
-
 A native PostgreSQL job-queue extension written in Rust using [pgrx](https://github.com/pgcentralfoundation/pgrx). Inspired by [pg-boss](https://github.com/timgit/pg-boss).
 
 Unlike pg-boss (a Node.js library), this extension lives entirely inside PostgreSQL — no external processes, no extra dependencies.
@@ -76,6 +74,25 @@ func main() {
     })
     cancel()
 }
+```
+
+#### Transactional enqueue
+
+Use `WithRowQuerier` to enqueue a job inside your own transaction — the job is
+only committed (and consumers are notified) when you commit:
+
+```go
+pool, _ := pgxpool.New(ctx, "postgres://postgres:secret@localhost:5432/postgres")
+c := taskboss.NewWithPool(pool)
+
+tx, _ := pool.Begin(ctx)
+
+// INSERT runs inside tx — rolled back if tx.Rollback is called
+_, _ = c.Send(ctx, "email", map[string]any{"to": "user@example.com"},
+    taskboss.WithRowQuerier(tx))
+
+// commit: job becomes visible and NOTIFY fires exactly once
+_ = tx.Commit(ctx)
 ```
 
 ### From source
