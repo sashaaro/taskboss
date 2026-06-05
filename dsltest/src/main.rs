@@ -6,7 +6,7 @@
 //! ```text
 //! cargo run -p dsltest -- scenarios                    # a directory
 //! cargo run -p dsltest -- scenarios/basic.scenario     # specific files
-//! TASKBOSS_DSN=postgres://user@host:5432/db cargo run -p dsltest
+//! TASKBOSS_DSN=postgres://postgres:secret@host:/db cargo run -p dsltest
 //! ```
 
 mod ast;
@@ -20,7 +20,7 @@ use std::process::ExitCode;
 use error::DslError;
 use runner::Runner;
 
-const DEFAULT_DSN: &str = "postgres://sasha@localhost:28818/taskboss";
+const DEFAULT_DSN: &str = "postgres://sasha@localhost:5432/postgres";
 const DEFAULT_DIR: &str = "scenarios";
 
 fn main() -> ExitCode {

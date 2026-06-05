@@ -1,4 +1,4 @@
-module github.com/sasha/taskboss-go
+module github.com/sashaaro/taskboss/client
 
 go 1.26.3
 

@@ -17,7 +17,7 @@ cargo run -p dsltest -- scenarios                  # директория цел
 cargo run -p dsltest -- scenarios/basic_delivery.scenario
 
 # DSN можно переопределить
-TASKBOSS_DSN=postgres://user@host:5432/db cargo run -p dsltest
+TASKBOSS_DSN=postgres://postgres:secret@host:/db cargo run -p dsltest
 ```
 
 Коды возврата: `0` — все прошли, `1` — упал `assert`/`check` или запрос к БД,

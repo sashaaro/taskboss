@@ -10,7 +10,7 @@ push-консьюмер `Work`, который через `LISTEN`/`NOTIFY` пр
 
 ```go
 ctx := context.Background()
-c, _ := taskboss.New(ctx, "postgres://user@localhost:5432/app")
+c, _ := taskboss.New(ctx, "postgres://postgres:secret@localhost:5432/postgres")
 defer c.Close()
 
 _ = c.CreateQueue(ctx, "email", nil)
@@ -34,7 +34,7 @@ _ = c.Work(ctx, "email", func(ctx context.Context, job taskboss.Job) error {
 `TASKBOSS_DSN` (по умолчанию — инстанс `cargo pgrx run pg18`):
 
 ```bash
-TASKBOSS_DSN=postgres://user@localhost:28818/taskboss go test ./...
+TASKBOSS_DSN=postgres://postgres:secret@localhost:5432/postgres go test ./...
 ```
 
 Каждый тест создаёт уникальную очередь и удаляет её за собой; если БД

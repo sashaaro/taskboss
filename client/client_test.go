@@ -15,12 +15,12 @@ import (
 // Point TASKBOSS_DSN at it; it defaults to the instance started by
 // `cargo pgrx run pg18`.
 //
-//	TASKBOSS_DSN=postgres://user@localhost:28818/taskboss go test ./client/...
+//	TASKBOSS_DSN=postgres://postgres:secret@localhost:5432/postgres go test ./...
 func dsn() string {
 	if v := os.Getenv("TASKBOSS_DSN"); v != "" {
 		return v
 	}
-	return "postgres://sasha@localhost:28818/taskboss"
+	return "postgres://sasha@localhost:5432/postgres"
 }
 
 // newTestClient connects, ensures the extension exists, and creates a uniquely
