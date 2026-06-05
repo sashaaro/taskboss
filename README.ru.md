@@ -59,9 +59,9 @@ func main() {
     defer c.Close()
 
     _ = c.CreateQueue(ctx, "email", nil)
-    _, _ = c.Send(ctx, "email", map[string]any{"to": "test2@gmail.com"}, &taskboss.SendOptions{Priority: new(5)})
-    _, _ = c.Send(ctx, "email", map[string]any{"to": "test1@gmail.com"}, &taskboss.SendOptions{Priority: new(10)})
-    _, _ = c.Send(ctx, "email", map[string]any{"to": "test3@gmail.com"}, &taskboss.SendOptions{Priority: new(5)})
+    _, _ = c.Send(ctx, "email", map[string]any{"to": "test2@gmail.com"}, taskboss.WithPriority(5))
+    _, _ = c.Send(ctx, "email", map[string]any{"to": "test1@gmail.com"}, taskboss.WithPriority(10))
+    _, _ = c.Send(ctx, "email", map[string]any{"to": "test3@gmail.com"}, taskboss.WithPriority(5))
 
     sendEmail := func(job taskboss.Job) error {
         fmt.Printf("Job data: %s\n", job.Data)

@@ -124,7 +124,7 @@ func TestFailRetriesThenFails(t *testing.T) {
 	ctx := context.Background()
 
 	// retryLimit=1: first failure retries, second exhausts to failed.
-	id, err := c.Send(ctx, queue, nil, &SendOptions{RetryLimit: Ptr(1)})
+	id, err := c.Send(ctx, queue, nil, WithRetryLimit(1))
 	if err != nil {
 		t.Fatalf("send: %v", err)
 	}
@@ -150,10 +150,10 @@ func TestPriorityOrdering(t *testing.T) {
 	c, queue := newTestClient(t)
 	ctx := context.Background()
 
-	if _, err := c.Send(ctx, queue, nil, &SendOptions{Priority: Ptr(1)}); err != nil {
+	if _, err := c.Send(ctx, queue, nil, WithPriority(1)); err != nil {
 		t.Fatalf("send low: %v", err)
 	}
-	hi, err := c.Send(ctx, queue, nil, &SendOptions{Priority: Ptr(10)})
+	hi, err := c.Send(ctx, queue, nil, WithPriority(10))
 	if err != nil {
 		t.Fatalf("send high: %v", err)
 	}

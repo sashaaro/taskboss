@@ -66,14 +66,32 @@ type QueueOptions struct {
 	RetentionSeconds *int
 }
 
-// SendOptions controls how a single job is enqueued. All fields are optional.
-type SendOptions struct {
+// sendOptions controls how a single job is enqueued. All fields are optional.
+type sendOptions struct {
 	Priority        *int
 	StartAfter      *int // seconds from now
 	RetryLimit      *int
 	RetryDelay      *int
 	ExpireInSeconds *int
 }
+
+// SendOption is a functional option for Send.
+type SendOption func(*sendOptions)
+
+// WithPriority sets the job priority (higher value = higher priority).
+func WithPriority(v int) SendOption { return func(o *sendOptions) { o.Priority = &v } }
+
+// WithStartAfter delays the job by v seconds from now.
+func WithStartAfter(v int) SendOption { return func(o *sendOptions) { o.StartAfter = &v } }
+
+// WithRetryLimit sets the maximum number of retries for the job.
+func WithRetryLimit(v int) SendOption { return func(o *sendOptions) { o.RetryLimit = &v } }
+
+// WithRetryDelay sets the delay in seconds between retries.
+func WithRetryDelay(v int) SendOption { return func(o *sendOptions) { o.RetryDelay = &v } }
+
+// WithExpireInSeconds sets a TTL in seconds after which the job expires.
+func WithExpireInSeconds(v int) SendOption { return func(o *sendOptions) { o.ExpireInSeconds = &v } }
 
 // Handler processes a job in Work. Returning nil completes the job; returning
 // an error fails it (which retries until the queue's retry limit is reached).
@@ -151,15 +169,17 @@ func (c *Client) GetQueues(ctx context.Context) ([]Queue, error) {
 
 // Send enqueues a job and returns its id. data is JSON-encoded; pass nil for an
 // empty payload. A NOTIFY is emitted so Work consumers wake up immediately.
-func (c *Client) Send(ctx context.Context, queue string, data any, opts *SendOptions) (uuid.UUID, error) {
-	o := map[string]any{}
-	if opts != nil {
-		putInt(o, "priority", opts.Priority)
-		putInt(o, "startAfter", opts.StartAfter)
-		putInt(o, "retryLimit", opts.RetryLimit)
-		putInt(o, "retryDelay", opts.RetryDelay)
-		putInt(o, "expireInSeconds", opts.ExpireInSeconds)
+func (c *Client) Send(ctx context.Context, queue string, data any, opts ...SendOption) (uuid.UUID, error) {
+	var so sendOptions
+	for _, opt := range opts {
+		opt(&so)
 	}
+	o := map[string]any{}
+	putInt(o, "priority", so.Priority)
+	putInt(o, "startAfter", so.StartAfter)
+	putInt(o, "retryLimit", so.RetryLimit)
+	putInt(o, "retryDelay", so.RetryDelay)
+	putInt(o, "expireInSeconds", so.ExpireInSeconds)
 	var idText string
 	err := c.pool.QueryRow(ctx,
 		"SELECT boss.send($1, $2::jsonb, $3::jsonb)::text",

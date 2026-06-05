@@ -16,8 +16,7 @@ defer c.Close()
 _ = c.CreateQueue(ctx, "email", nil)
 
 // producer
-id, _ := c.Send(ctx, "email", map[string]any{"to": "a@b.c"},
-    &taskboss.SendOptions{Priority: taskboss.Ptr(10)})
+id, _ := c.Send(ctx, "email", map[string]any{"to": "a@b.c"})
 
 // consumer: блокируется до отмены ctx, обрабатывая задачи по мере поступления
 _ = c.Work(ctx, "email", func(ctx context.Context, job taskboss.Job) error {
