@@ -35,6 +35,40 @@ docker run -d --name taskboss \
   ghcr.io/sashaaro/taskboss:latest
 ```
 
+### Go client
+
+```go
+import (
+    "context"
+    "fmt"
+    "time"
+
+    taskboss "github.com/sashaaro/taskboss/client"
+)
+
+func main() {
+    ctx := context.Background()
+    c, _ := taskboss.New(ctx, "postgres://postgres:secret@localhost:5432/postgres")
+    defer c.Close()
+
+    _ = c.CreateQueue(ctx, "email", nil)
+    _, _ = c.Send(ctx, "email", map[string]any{"to": "test2@gmail.com"}, &taskboss.SendOptions{Priority: new(5)})
+    _, _ = c.Send(ctx, "email", map[string]any{"to": "test1@gmail.com"}, &taskboss.SendOptions{Priority: new(10)})
+    _, _ = c.Send(ctx, "email", map[string]any{"to": "test3@gmail.com"}, &taskboss.SendOptions{Priority: new(5)})
+
+    sendEmail := func(job taskboss.Job) error {
+        fmt.Printf("Job data: %s\n", job.Data)
+        return nil
+    }
+
+    ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
+    _ = c.Work(ctx, "email", func(ctx context.Context, job taskboss.Job) error {
+        return sendEmail(job) // nil -> complete, error -> fail (with retry)
+    })
+    cancel()
+}
+```
+
 Connect to the running container:
 
 ```bash
