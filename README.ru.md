@@ -15,22 +15,31 @@
 Отложено на будущие версии: cron-расписания, pub/sub, политики очередей (singleton/short/stately),
 партиционирование, heartbeat-мониторинг, throttle/debounce, dead-letter.
 
-## Требования
-
-- PostgreSQL 18
-- Rust toolchain + `cargo pgrx`
-- Для фонового воркера обслуживания: `shared_preload_libraries = 'taskboss'` в `postgresql.conf`
-  (требует рестарта PostgreSQL) и GUC `taskboss.database` с именем БД, где установлено расширение.
-
 ## Быстрый старт
 
 ### Docker
+
+`ghcr.io/sashaaro/taskboss` — это PostgreSQL 18 с предустановленным расширением taskboss и `shared_preload_libraries` из коробки.
 
 ```bash
 docker run -d --name taskboss \
   -e POSTGRES_PASSWORD=secret \
   -p 5432:5432 \
   ghcr.io/sashaaro/taskboss:latest
+```
+
+Или добавьте расширение в существующий образ PostgreSQL:
+
+```dockerfile
+FROM postgres:18
+ARG VERSION=0.1.0
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+    && curl -fsSL \
+       "https://github.com/sashaaro/taskboss/releases/download/v${VERSION}/taskboss-${VERSION}-pg18-x86_64-unknown-linux-gnu.tar.gz" \
+       | tar -xz -C / \
+    && apt-get purge -y curl && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+RUN echo "shared_preload_libraries = 'taskboss'" >> /usr/share/postgresql/postgresql.conf.sample
 ```
 
 ### Go-клиент
@@ -65,12 +74,6 @@ func main() {
     })
     cancel()
 }
-```
-
-Подключиться к запущенному контейнеру:
-
-```bash
-docker exec -it taskboss psql -U postgres
 ```
 
 ### Из исходников

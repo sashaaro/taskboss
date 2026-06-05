@@ -17,22 +17,31 @@ Unlike pg-boss (a Node.js library), this extension lives entirely inside Postgre
 Deferred to future versions: cron schedules, pub/sub, queue policies (singleton/short/stately),
 partitioning, heartbeat monitoring, throttle/debounce, dead-letter queues.
 
-## Requirements
-
-- PostgreSQL 18
-- Rust toolchain + `cargo pgrx`
-- For the maintenance background worker: `shared_preload_libraries = 'taskboss'` in `postgresql.conf`
-  (requires a PostgreSQL restart) and the `taskboss.database` GUC set to the database where the extension is installed.
-
 ## Quick Start
 
 ### Docker
+
+`ghcr.io/sashaaro/taskboss` is PostgreSQL 18 with the taskboss extension pre-installed and loaded via `shared_preload_libraries`.
 
 ```bash
 docker run -d --name taskboss \
   -e POSTGRES_PASSWORD=secret \
   -p 5432:5432 \
   ghcr.io/sashaaro/taskboss:latest
+```
+
+Or add it to an existing PostgreSQL image:
+
+```dockerfile
+FROM postgres:18
+ARG VERSION=0.1.0
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+    && curl -fsSL \
+       "https://github.com/sashaaro/taskboss/releases/download/v${VERSION}/taskboss-${VERSION}-pg18-x86_64-unknown-linux-gnu.tar.gz" \
+       | tar -xz -C / \
+    && apt-get purge -y curl && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+RUN echo "shared_preload_libraries = 'taskboss'" >> /usr/share/postgresql/postgresql.conf.sample
 ```
 
 ### Go client
@@ -67,12 +76,6 @@ func main() {
     })
     cancel()
 }
-```
-
-Connect to the running container:
-
-```bash
-docker exec -it taskboss psql -U postgres
 ```
 
 ### From source
